@@ -75,8 +75,6 @@
         .btn-gray { background: #f5f5f5; color: #333; }
         .quit-btn { position: absolute; top: 15px; left: 15px; background: #2e1e19; border: 1px solid #5d4037; color: #ccc; padding: 6px 16px; z-index: 50; cursor: pointer; }
         
-        .room-info { display: none; }
-
         /* Lobby */
         #lobby-screen { background: rgba(0,0,0,0.9); z-index: 90; }
         .pin-display { font-family: monospace; font-size: 48px; color: var(--neon-cyan); border: 2px dashed #555; padding: 10px; margin: 10px 0; letter-spacing: 5px; background: rgba(0,0,0,0.5); }
@@ -86,7 +84,7 @@
         .choice-btn.selected { background: var(--vintage-gold); color: #000; border-color: #fff; font-weight: bold; }
         .net-status { position: absolute; top: 15px; right: 15px; font-size: 12px; color: var(--neon-cyan); background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 4px; z-index: 50; display: none; border: 1px solid var(--neon-cyan); }
 
-        /* Turn Notification */
+        /* Turn Notification - OPTIMIZED */
         #turn-notification {
             position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
             font-size: 32px; font-weight: bold; color: #fff;
@@ -234,7 +232,7 @@
         </div>
     </div>
 
-    <!-- Modal Layers -->
+    <!-- Modals -->
     <div id="settlement-modal" class="scene">
         <div class="modal-content">
             <div class="modal-header">本局结束</div><div id="settle-list"></div>
@@ -264,9 +262,9 @@
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         QUOTES: { PASS: ["不要", "过", "要不起", "Pass"], WIN: ["赢了！", "还有谁？", "承让", "结束战斗"], START: ["发牌了", "看牌", "各凭本事"] },
         
-        // === Communication Expert: Global Relay & WeChat Fix ===
+        // === Network Expert: Stable Global Architecture ===
         PEER_CONFIG: { 
-            host: 'peerjs.com', 
+            host: '0.peerjs.com', 
             port: 443, 
             secure: true, 
             pingInterval: 5000, 
@@ -275,8 +273,7 @@
                 iceServers: [ 
                     { urls: "stun:openrelay.metered.ca:80" },
                     { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
                 ] 
             } 
         },
@@ -294,50 +291,61 @@
             if(this.peer) this.peer.destroy(); 
             this.peer = new Peer(CONFIG.APP_PREFIX + this.myPin, CONFIG.PEER_CONFIG);
             
+            // --- Timeout & ID Handlers ---
             let opened = false;
-            let retryTimer = setTimeout(() => {
+            let idTimeout = setTimeout(() => {
                 if (!opened) {
-                    console.log("[WebRTC] Host init timeout, retrying...");
-                    this.peer.destroy();
-                    this.initHost(cb);
+                    console.log("[WebRTC] Host timeout, forcing reconnect...");
+                    this.peer.reconnect();
                 }
-            }, 10000);
+            }, 5000);
 
             this.peer.on('open', () => { 
-                opened = true; clearTimeout(retryTimer); cb(this.myPin); 
+                opened = true; clearTimeout(idTimeout); cb(this.myPin); 
             });
 
             this.peer.on('connection', (conn) => {
                 conn.on('open', () => { conn.send({type:'WELCOME'}); });
                 conn.on('data', (data) => {
                     if(data.type === 'JOIN') { 
+                        // === Advanced ICU Reconnection Logic ===
                         let existingClient = this.clients.find(c => c.name === data.name);
                         let existingPlayerState = STATE.players.find(p => p.name === data.name);
-                        
+
                         if (existingClient || (STATE.players.length > 0 && existingPlayerState)) {
-                            console.log(`[Host] Reconnect: ${data.name}`);
-                            if (existingClient) { existingClient.conn = conn; existingClient.id = conn.peer; }
-                            else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); }
+                            console.log(`[Host] CPR - Reconnecting player: ${data.name}`);
                             
-                            if (existingPlayerState) { 
-                                existingPlayerState.peerId = conn.peer; 
-                                existingPlayerState.disconnected = false; 
-                                existingPlayerState.isCpu = false; 
+                            // 1. Update existing client socket reference
+                            if (existingClient) {
+                                existingClient.conn = conn;
+                                existingClient.id = conn.peer;
+                            } else {
+                                this.clients.push({ conn: conn, id: conn.peer, name: data.name });
                             }
-                            
-                            // CPR: Send ID then Send State
+
+                            // 2. Re-bind Game State
+                            if (existingPlayerState) {
+                                existingPlayerState.peerId = conn.peer;
+                                existingPlayerState.disconnected = false;
+                                existingPlayerState.isCpu = false;
+                            }
+
+                            // 3. IMMEDIATE SYNC (The CPR Kit)
+                            // Tell client who they are
                             conn.send({ type: 'GAME_START', players: STATE.players, playerCount: STATE.playerCount });
+                            // Inject current game state
                             conn.send({ type: 'STATE', state: STATE, reason: 'RECONNECT' });
                             
-                            APP.syncState('RECONNECT');
+                            APP.syncState('RECONNECT_NOTIFY');
                             UI.updateLobbyList();
                         } else {
-                            if (STATE.players.length > 0) { 
-                                conn.send({ type: 'ERROR', msg: 'Game running' }); 
-                                setTimeout(() => conn.close(), 500); 
-                            } else { 
-                                this.clients.push({ conn: conn, id: conn.peer, name: data.name }); 
-                                UI.updateLobbyList(); 
+                            // Normal New Player Join
+                            if (STATE.players.length > 0) {
+                                conn.send({ type: 'ERROR', msg: 'Game running' });
+                                setTimeout(() => conn.close(), 500);
+                            } else {
+                                this.clients.push({ conn: conn, id: conn.peer, name: data.name });
+                                UI.updateLobbyList();
                             }
                         }
                     }
@@ -346,8 +354,14 @@
                 conn.on('close', () => { 
                     if(STATE.players.length > 0) {
                         let clientObj = this.clients.find(c => c.conn === conn);
-                        if (clientObj) { let p = STATE.players.find(pl => pl.name === clientObj.name); if (p) { p.disconnected = true; APP.syncState('DISCONNECT'); } }
-                    } else { this.clients = this.clients.filter(c => c.conn !== conn); UI.updateLobbyList(); }
+                        if (clientObj) {
+                            let p = STATE.players.find(pl => pl.name === clientObj.name);
+                            if (p) { p.disconnected = true; APP.syncState('DISCONNECT'); }
+                        }
+                    } else {
+                        this.clients = this.clients.filter(c => c.conn !== conn); 
+                        UI.updateLobbyList(); 
+                    }
                 });
             });
             this.peer.on('error', (err) => { if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); });
@@ -358,16 +372,15 @@
             this.peer = new Peer(CONFIG.PEER_CONFIG);
 
             let opened = false;
-            let retryTimer = setTimeout(() => {
+            let idTimeout = setTimeout(() => {
                 if (!opened) {
-                    console.log("[WebRTC] Client init timeout, retrying...");
-                    this.peer.destroy();
-                    this.joinRoom(pin, name, cbSuccess, cbErr);
+                    console.log("[WebRTC] Client timeout, forcing reconnect...");
+                    this.peer.reconnect();
                 }
-            }, 10000);
+            }, 5000);
 
             this.peer.on('open', () => {
-                opened = true; clearTimeout(retryTimer);
+                opened = true; clearTimeout(idTimeout);
                 this.hostConn = this.peer.connect(CONFIG.APP_PREFIX + pin, { reliable: true });
                 this.hostConn.on('open', () => { this.hostConn.send({ type: 'JOIN', name: name }); cbSuccess(); });
                 this.hostConn.on('data', (data) => APP.onNetworkData(data));
