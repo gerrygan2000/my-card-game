@@ -74,7 +74,7 @@
         .btn-green:disabled { background: #555; cursor: not-allowed; }
         .btn-gray { background: #f5f5f5; color: #333; }
         .quit-btn { position: absolute; top: 15px; left: 15px; background: #2e1e19; border: 1px solid #5d4037; color: #ccc; padding: 6px 16px; z-index: 50; cursor: pointer; }
-        
+
         /* Lobby */
         #lobby-screen { background: rgba(0,0,0,0.9); z-index: 90; }
         .pin-display { font-family: monospace; font-size: 48px; color: var(--neon-cyan); border: 2px dashed #555; padding: 10px; margin: 10px 0; letter-spacing: 5px; background: rgba(0,0,0,0.5); }
@@ -147,7 +147,7 @@
         .gain.plus { color: #2e7d32; } .gain.minus { color: #c62828; }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* Cassette */
+        /* Tape */
         #cassette-btn { margin-top: 15px; padding: 8px 20px; background: #2e1e19; border: 2px solid #8d6e63; color: #d7ccc8; cursor: pointer; border-radius: 4px; font-family: monospace; width: 100%; box-sizing: border-box; }
         #cassette-modal { background: rgba(0,0,0,0.95); z-index: 300; }
         .cassette-panel { background: #2e1e19; color: #fff; width: 95%; max-width: 600px; border: 4px solid #5d4037; padding: 20px; border-radius: 10px; }
@@ -162,7 +162,7 @@
             .card-inner { grid-template-columns: 14px 1fr 14px; } .corner { font-size: 12px; } .center-suit { font-size: 26px; }
             #my-hand { height: 90px; } .title-logo { font-size: 32px; padding: 5px 15px; }
             #center-table { width: 220px; height: 140px; top: 40%;} .slot-bottom .played-cards-slot { bottom: 100px; }
-            #turn-notification { font-size: 24px; padding: 10px 20px; }
+            #turn-notification { font-size: 28px; padding: 10px 30px; }
         }
     </style>
 </head>
@@ -232,7 +232,7 @@
         </div>
     </div>
 
-    <!-- Modal Layers -->
+    <!-- Modals -->
     <div id="settlement-modal" class="scene">
         <div class="modal-content">
             <div class="modal-header">本局结束</div><div id="settle-list"></div>
@@ -262,20 +262,19 @@
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         QUOTES: { PASS: ["不要", "过", "要不起", "Pass"], WIN: ["赢了！", "还有谁？", "承让", "结束战斗"], START: ["发牌了", "看牌", "各凭本事"] },
         
-        // === Network Communication Expert: Final Relay Configuration ===
+        // === WebRTC Logic Expert: Relay-Only Mandatory Configuration ===
         PEER_CONFIG: { 
-            host: 'peerjs.com', 
+            host: '0.peerjs.com', 
             port: 443, 
             secure: true, 
             pingInterval: 5000, 
-            debug: 1, 
+            debug: 3, // Full diagnostics enabled
             config: { 
-                iceTransportPolicy: 'relay', // Force TURN relay for stable cross-network connection
+                iceTransportPolicy: 'relay', // Force TURN usage, skip direct STUN
                 iceServers: [ 
                     { urls: "stun:openrelay.metered.ca:80" },
                     { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
                 ] 
             } 
         },
@@ -293,13 +292,11 @@
             if(this.peer) this.peer.destroy(); 
             this.peer = new Peer(CONFIG.APP_PREFIX + this.myPin, CONFIG.PEER_CONFIG);
             
-            // --- Timeout protection ---
             let opened = false;
             let idTimeout = setTimeout(() => {
                 if (!opened) {
-                    console.log("[WebRTC] Host handshake stalled, retrying...");
-                    this.peer.destroy();
-                    this.initHost(cb);
+                    console.log("[WebRTC] Host init stalled, forcing reconnect...");
+                    this.peer.reconnect();
                 }
             }, 5000);
 
@@ -308,18 +305,15 @@
             });
 
             this.peer.on('connection', (conn) => {
-                // Monitor successful connection
                 console.log('连接成功，正在初始化数据...');
-
                 conn.on('open', () => { conn.send({type:'WELCOME'}); });
                 conn.on('data', (data) => {
                     if(data.type === 'JOIN') { 
-                        // Advanced ICU Reconnection Logic
                         let existingClient = this.clients.find(c => c.name === data.name);
                         let existingPlayerState = STATE.players.find(p => p.name === data.name);
 
                         if (existingClient || (STATE.players.length > 0 && existingPlayerState)) {
-                            console.log(`[Host] CPR: Restoring player ${data.name}`);
+                            console.log(`[Host] Rejoin detected for ${data.name}.`);
                             if (existingClient) { existingClient.conn = conn; existingClient.id = conn.peer; }
                             else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); }
                             
@@ -329,7 +323,7 @@
                                 existingPlayerState.isCpu = false; 
                             }
                             
-                            // CPR Injection: ID then State
+                            // CPR injection: ID then State
                             conn.send({ type: 'GAME_START', players: STATE.players, playerCount: STATE.playerCount });
                             conn.send({ type: 'STATE', state: STATE, reason: 'RECONNECT' });
                             
@@ -354,7 +348,15 @@
                     } else { this.clients = this.clients.filter(c => c.conn !== conn); UI.updateLobbyList(); }
                 });
             });
-            this.peer.on('error', (err) => { if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); });
+            
+            this.peer.on('error', (err) => { 
+                if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); 
+                // Auto-recovery logic
+                if(err.type === 'server-error') {
+                    console.log("[WebRTC] Server error detected, attempting reconnect in 3s...");
+                    setTimeout(() => this.peer.reconnect(), 3000);
+                }
+            });
         },
 
         joinRoom: function(pin, name, cbSuccess, cbErr) {
@@ -364,9 +366,8 @@
             let opened = false;
             let idTimeout = setTimeout(() => {
                 if (!opened) {
-                    console.log("[WebRTC] Client handshake stalled, retrying...");
-                    this.peer.destroy();
-                    this.joinRoom(pin, name, cbSuccess, cbErr);
+                    console.log("[WebRTC] Client init stalled, forcing reconnect...");
+                    this.peer.reconnect();
                 }
             }, 5000);
 
@@ -381,7 +382,13 @@
                 this.hostConn.on('data', (data) => APP.onNetworkData(data));
                 this.hostConn.on('close', () => { location.reload(); });
             });
-            this.peer.on('error', cbErr);
+            
+            this.peer.on('error', (err) => {
+                cbErr(err); 
+                if(err.type === 'server-error') {
+                    setTimeout(() => this.peer.reconnect(), 3000);
+                }
+            });
         },
         broadcast: function(data) { if(this.mode !== 'host') return; this.clients.forEach(c => { if(c.conn.open) c.conn.send(data); }); },
         sendToHost: function(data) { if(this.mode === 'client' && this.hostConn && this.hostConn.open) this.hostConn.send(data); }
