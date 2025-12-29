@@ -75,7 +75,6 @@
         .btn-gray { background: #f5f5f5; color: #333; }
         .quit-btn { position: absolute; top: 15px; left: 15px; background: #2e1e19; border: 1px solid #5d4037; color: #ccc; padding: 6px 16px; z-index: 50; cursor: pointer; }
         
-        /* New: Room Info Display (Removing old style, but keeping class just in case) */
         .room-info { display: none; }
 
         /* Lobby */
@@ -87,7 +86,7 @@
         .choice-btn.selected { background: var(--vintage-gold); color: #000; border-color: #fff; font-weight: bold; }
         .net-status { position: absolute; top: 15px; right: 15px; font-size: 12px; color: var(--neon-cyan); background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 4px; z-index: 50; display: none; border: 1px solid var(--neon-cyan); }
 
-        /* Turn Notification - OPTIMIZED */
+        /* Turn Notification */
         #turn-notification {
             position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
             font-size: 32px; font-weight: bold; color: #fff;
@@ -137,8 +136,6 @@
         #my-hand { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; height: 110px; width: auto; max-width: 90%; z-index: 30; }
         #player-controls { position: absolute; bottom: 30px; right: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 50; opacity: 0.5; pointer-events: none; transition: opacity 0.3s; }
         #player-controls.active { opacity: 1; pointer-events: auto; }
-        
-        /* Scoreboard & Header */
         #scoreboard { position: absolute; top: 50px; right: 15px; background: #2e1e19; border: 4px solid #5d4037; border-radius: 4px; padding: 10px; z-index: 50; min-width: 130px; font-family: monospace; }
         #sb-header { text-align: center; font-size: 14px; color: var(--vintage-gold); font-weight: bold; margin-bottom: 5px; }
         .sb-row { display: flex; justify-content: space-between; color: #eee; font-size: 14px; margin-bottom: 2px; }
@@ -227,10 +224,7 @@
         <div id="game-ui" style="width:100%; height:100%;">
             <button class="quit-btn" onclick="APP.quit()">退出</button>
             <div class="net-status" id="net-indicator">● ONLINE</div>
-            <div id="scoreboard">
-                <div id="sb-header">记分板</div>
-                <div id="sb-content"></div>
-            </div>
+            <div id="scoreboard"><div id="sb-header">记分板</div><div id="sb-content"></div></div>
             <div id="players-container"></div>
             <div id="center-table"><div id="deck-pile"><span id="deck-count" style="color:#fff; font-weight:bold; font-size:20px; text-shadow: 1px 1px 0 #000;">54</span></div></div>
             <div id="player-controls">
@@ -240,7 +234,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modal Layers -->
     <div id="settlement-modal" class="scene">
         <div class="modal-content">
             <div class="modal-header">本局结束</div><div id="settle-list"></div>
@@ -260,37 +254,62 @@
     </div>
 
 <script>
+    /* ==========================================================================
+       1. CONFIGURATION & CONSTANTS
+       ========================================================================== */
     const CONFIG = {
         SUITS: ['♠', '♥', '♣', '♦'], RANKS: ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'],
         VALS: { '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14, '2':15, 'S':16, 'B':17 },
         NPC_NAMES: ["王阿姨", "李科长", "老克勒", "小陈", "张大爷", "弄堂一枝花", "隔壁老王"],
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         QUOTES: { PASS: ["不要", "过", "要不起", "Pass"], WIN: ["赢了！", "还有谁？", "承让", "结束战斗"], START: ["发牌了", "看牌", "各凭本事"] },
-        // === WebRTC Architect: Global Connectivity Fix ===
+        
+        // === Mobile WebRTC Expert: Connectivity Optimization ===
         PEER_CONFIG: { 
             host: '0.peerjs.com', 
             port: 443, 
             secure: true, 
-            pingInterval: 5000, 
-            debug: 1, 
+            pingInterval: 3000, // Faster pings for WeChat stability
+            debug: 1, // Enable console logs for debugging
             config: { 
                 iceServers: [ 
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun.qq.com:3478' },
-                    { urls: 'stun:stun.chat.twilio.com:3478' },
-                    { urls: 'stun:stun.voipstunt.com' }
+                    { urls: 'stun:stun.qq.com:3478' }, // Tencent STUN
+                    { urls: 'stun:stun.l.google.com:19302' }, // Google Global STUN
+                    { urls: 'stun:stun.commgate.it:3478' }, // European STUN
+                    { urls: 'stun:stun.t-online.de:3478' } // European Alternate STUN
                 ] 
             } 
         },
         APP_PREFIX: 'gandengyan-fin-'
     };
 
+    /* ==========================================================================
+       2. NETWORK MODULE (NET) - 基于 PeerJS
+       ========================================================================== */
     const NET = {
         peer: null, mode: 'offline', hostConn: null, clients: [], myPin: null,
+        
         initHost: function(cb) {
             this.mode = 'host'; this.clients = []; this.myPin = Math.floor(1000 + Math.random() * 9000).toString();
-            if(this.peer) this.peer.destroy(); this.peer = new Peer(CONFIG.APP_PREFIX + this.myPin, CONFIG.PEER_CONFIG);
-            this.peer.on('open', () => cb(this.myPin));
+            if(this.peer) this.peer.destroy(); 
+            this.peer = new Peer(CONFIG.APP_PREFIX + this.myPin, CONFIG.PEER_CONFIG);
+            
+            // --- Timeout Protection ---
+            let opened = false;
+            let retryTimer = setTimeout(() => {
+                if (!opened) {
+                    console.log("[WebRTC] Host init timeout, retrying...");
+                    this.peer.destroy();
+                    this.initHost(cb);
+                }
+            }, 10000);
+
+            this.peer.on('open', () => { 
+                opened = true;
+                clearTimeout(retryTimer);
+                cb(this.myPin); 
+            });
+
             this.peer.on('connection', (conn) => {
                 conn.on('open', () => { conn.send({type:'WELCOME'}); });
                 conn.on('data', (data) => {
@@ -321,9 +340,24 @@
             });
             this.peer.on('error', (err) => { if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); });
         },
+
         joinRoom: function(pin, name, cbSuccess, cbErr) {
-            this.mode = 'client'; if(this.peer) this.peer.destroy(); this.peer = new Peer(CONFIG.PEER_CONFIG);
+            this.mode = 'client'; if(this.peer) this.peer.destroy(); 
+            this.peer = new Peer(CONFIG.PEER_CONFIG);
+
+            // --- Timeout Protection ---
+            let opened = false;
+            let retryTimer = setTimeout(() => {
+                if (!opened) {
+                    console.log("[WebRTC] Client init timeout, retrying...");
+                    this.peer.destroy();
+                    this.joinRoom(pin, name, cbSuccess, cbErr);
+                }
+            }, 10000);
+
             this.peer.on('open', () => {
+                opened = true;
+                clearTimeout(retryTimer);
                 this.hostConn = this.peer.connect(CONFIG.APP_PREFIX + pin, { reliable: true });
                 this.hostConn.on('open', () => { this.hostConn.send({ type: 'JOIN', name: name }); cbSuccess(); });
                 this.hostConn.on('data', (data) => APP.onNetworkData(data));
@@ -335,8 +369,14 @@
         sendToHost: function(data) { if(this.mode === 'client' && this.hostConn && this.hostConn.open) this.hostConn.send(data); }
     };
 
+    /* ==========================================================================
+       3. GAME STATE
+       ========================================================================== */
     const STATE = { players: [], deck: [], currTurn: 0, lastPlay: null, passCount: 0, playerCount: 3, selectedIndices: [], bombCount: 0 };
 
+    /* ==========================================================================
+       4. AUDIO SYSTEM 
+       ========================================================================== */
     const AUDIO = {
         ctx: null, init: function() { window.AudioContext = window.AudioContext||window.webkitAudioContext; this.ctx = new AudioContext(); },
         play: function(type) { if(this.Recorder.playRandom(type)) return; this.playSynth(type); },
@@ -359,6 +399,9 @@
         }
     };
 
+    /* ==========================================================================
+       5. CORE RULES ENGINE
+       ========================================================================== */
     const RULES = {
         analyze: function(c) {
             if(!c||!c.length)return null; c.sort((a,b)=>a.val-b.val); let len=c.length, j=c.filter(x=>x.isJoker).length, n=c.filter(x=>!x.isJoker);
@@ -386,6 +429,9 @@
         }
     };
 
+    /* ==========================================================================
+       6. AI & UI
+       ========================================================================== */
     const AI = {
         move: function(player) {
             let hand=[...player.hand], last=STATE.lastPlay, move=null, groups=APP.groupHand(hand);
@@ -483,6 +529,9 @@
         }
     };
 
+    /* ==========================================================================
+       7. MAIN APP CONTROLLER
+       ========================================================================== */
     const APP = {
         myPlayerIdx: 0,
         startLocal: function() { NET.mode = 'offline'; this.myPlayerIdx = 0; this.launchGame(STATE.playerCount); },
@@ -555,7 +604,7 @@
             let pIdx = STATE.currTurn, player = STATE.players[pIdx];
             if(action === 'play') {
                 let analysis = RULES.analyze(cards);
-                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards;
+                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards; 
                 STATE.passCount=0;
                 if(analysis.type.includes('bomb')||analysis.type==='rocket') STATE.bombCount++;
                 let snd = (analysis.type.includes('bomb')||analysis.type==='rocket') ? 'bomb' : 'play';
