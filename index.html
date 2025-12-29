@@ -226,7 +226,6 @@
         <div id="turn-notification">轮到你了</div>
         <div id="game-ui" style="width:100%; height:100%;">
             <button class="quit-btn" onclick="APP.quit()">退出</button>
-            <!-- REMOVED OLD ROOM INFO DIV -->
             <div class="net-status" id="net-indicator">● ONLINE</div>
             <div id="scoreboard">
                 <div id="sb-header">记分板</div>
@@ -254,7 +253,7 @@
 
     <div id="cassette-modal" class="scene">
         <div class="cassette-panel">
-            <div style="text-align:center; font-size:20px; color:var(--vintage-gold); margin-bottom:20px; border-bottom:1px solid #555;">📼 Cassette Studio</div>
+            <div style="text-align:center; font-size:20px; color:var(--vintage-gold); margin-bottom:20px; border-bottom:1px solid #555;"> Tape Recorder</div>
             <div id="tape-list"></div>
             <div style="text-align:center; margin-top:20px;"><button class="main-btn" style="font-size:16px;" onclick="AUDIO.Recorder.closeUI()">Save & Close</button></div>
         </div>
@@ -267,7 +266,22 @@
         NPC_NAMES: ["王阿姨", "李科长", "老克勒", "小陈", "张大爷", "弄堂一枝花", "隔壁老王"],
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         QUOTES: { PASS: ["不要", "过", "要不起", "Pass"], WIN: ["赢了！", "还有谁？", "承让", "结束战斗"], START: ["发牌了", "看牌", "各凭本事"] },
-        PEER_CONFIG: { host: '0.peerjs.com', port: 443, secure: true, pingInterval: 5000, config: { iceServers: [ { urls: 'stun:stun.qq.com:3478' }, { urls: 'stun:stun1.l.google.com:19302' } ] } },
+        // === WebRTC Architect: Global Connectivity Fix ===
+        PEER_CONFIG: { 
+            host: '0.peerjs.com', 
+            port: 443, 
+            secure: true, 
+            pingInterval: 5000, 
+            debug: 1, 
+            config: { 
+                iceServers: [ 
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun.qq.com:3478' },
+                    { urls: 'stun:stun.chat.twilio.com:3478' },
+                    { urls: 'stun:stun.voipstunt.com' }
+                ] 
+            } 
+        },
         APP_PREFIX: 'gandengyan-fin-'
     };
 
@@ -281,49 +295,19 @@
                 conn.on('open', () => { conn.send({type:'WELCOME'}); });
                 conn.on('data', (data) => {
                     if(data.type === 'JOIN') { 
-                        // === Core Rejoin Logic (Updated) ===
-                        // 1. Check existing clients by name
                         let existingClient = this.clients.find(c => c.name === data.name);
-                        // 2. Check game state players by name (if game started, client might be in state but not in client list if connection dropped)
                         let existingPlayerState = STATE.players.find(p => p.name === data.name);
-
-                        // If found in either, it is a reconnect
                         if (existingClient || (STATE.players.length > 0 && existingPlayerState)) {
-                            console.log(`[Host] Reconnect detected for: ${data.name}`);
-                            
-                            // Update NET.clients: Replace or Add
-                            if (existingClient) {
-                                existingClient.conn = conn;
-                                existingClient.id = conn.peer;
-                            } else {
-                                this.clients.push({ conn: conn, id: conn.peer, name: data.name });
-                            }
-
-                            // Update STATE.players if game started
-                            if (existingPlayerState) {
-                                existingPlayerState.peerId = conn.peer;
-                                existingPlayerState.disconnected = false;
-                                existingPlayerState.isCpu = false;
-                            }
-
-                            // ★★★ CPR: IMMEDIATE SYNC ★★★
-                            // 1. Send ID
+                            if (existingClient) { existingClient.conn = conn; existingClient.id = conn.peer; }
+                            else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); }
+                            if (existingPlayerState) { existingPlayerState.peerId = conn.peer; existingPlayerState.disconnected = false; existingPlayerState.isCpu = false; }
                             conn.send({ type: 'GAME_START', players: STATE.players, playerCount: STATE.playerCount });
-                            // 2. Send State
                             conn.send({ type: 'STATE', state: STATE, reason: 'RECONNECT' });
-                            
-                            // Broadcast to others
                             APP.syncState('RECONNECT');
                             UI.updateLobbyList();
                         } else {
-                            // New Player
-                            if (STATE.players.length > 0) {
-                                conn.send({ type: 'ERROR', msg: 'Game running' });
-                                setTimeout(() => conn.close(), 500);
-                            } else {
-                                this.clients.push({ conn: conn, id: conn.peer, name: data.name });
-                                UI.updateLobbyList();
-                            }
+                            if (STATE.players.length > 0) { conn.send({ type: 'ERROR', msg: 'Game running' }); setTimeout(() => conn.close(), 500); }
+                            else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); UI.updateLobbyList(); }
                         }
                     }
                     else APP.onNetworkData(data, conn);
@@ -331,14 +315,8 @@
                 conn.on('close', () => { 
                     if(STATE.players.length > 0) {
                         let clientObj = this.clients.find(c => c.conn === conn);
-                        if (clientObj) {
-                            let p = STATE.players.find(pl => pl.name === clientObj.name);
-                            if (p) { p.disconnected = true; APP.syncState('DISCONNECT'); }
-                        }
-                    } else {
-                        this.clients = this.clients.filter(c => c.conn !== conn); 
-                        UI.updateLobbyList(); 
-                    }
+                        if (clientObj) { let p = STATE.players.find(pl => pl.name === clientObj.name); if (p) { p.disconnected = true; APP.syncState('DISCONNECT'); } }
+                    } else { this.clients = this.clients.filter(c => c.conn !== conn); UI.updateLobbyList(); }
                 });
             });
             this.peer.on('error', (err) => { if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); });
@@ -349,7 +327,7 @@
                 this.hostConn = this.peer.connect(CONFIG.APP_PREFIX + pin, { reliable: true });
                 this.hostConn.on('open', () => { this.hostConn.send({ type: 'JOIN', name: name }); cbSuccess(); });
                 this.hostConn.on('data', (data) => APP.onNetworkData(data));
-                this.hostConn.on('close', () => { alert("Host Disconnected"); location.reload(); });
+                this.hostConn.on('close', () => { location.reload(); });
             });
             this.peer.on('error', cbErr);
         },
@@ -484,14 +462,8 @@
             document.getElementById('deck-count').innerText = STATE.deck.length;
             STATE.players.forEach((p, i) => { let b = document.getElementById(`badge-count-${i}`); if(b) b.innerText = p.hand.length; });
             document.getElementById('sb-content').innerHTML = STATE.players.map(p => `<div class="sb-row"><span>${p.name}</span><span class="sb-chips">${p.chips}</span></div>`).join('');
-            
-            // Scoreboard Header Update
-            let headerText = "记分板";
-            if(NET.mode !== 'offline' && NET.myPin) {
-                headerText = `${NET.myPin} 包房`;
-            }
-            let sbHeader = document.querySelector('#sb-header');
-            if(sbHeader) sbHeader.innerText = headerText;
+            let headerText = "记分板"; if(NET.mode !== 'offline' && NET.myPin) headerText = `${NET.myPin} 包房`;
+            let sbHeader = document.querySelector('#sb-header'); if(sbHeader) sbHeader.innerText = headerText;
         },
         animThrow: function(pIdx, cards, cb) {
             let start = (pIdx === APP.myPlayerIdx) ? document.getElementById('my-hand') : document.getElementById(`p-slot-${pIdx}`), end = document.querySelector(`#p-slot-${pIdx} .played-cards-slot`);
@@ -548,14 +520,7 @@
             STATE.players.forEach(p=>p.hand=[]); for(let i=0;i<5;i++)STATE.players.forEach(p=>{if(STATE.deck.length)p.hand.push(STATE.deck.pop())});
             STATE.players.forEach(p=>p.hand.sort((a,b)=>(a.val-b.val)||(CONFIG.SUITS.indexOf(a.suit)-CONFIG.SUITS.indexOf(b.suit))));
             STATE.currTurn = Math.floor(Math.random()*STATE.playerCount);
-            
-            // === NEW: 6th Card Rule ===
-            if(STATE.deck.length > 0) {
-                let dealer = STATE.players[STATE.currTurn];
-                dealer.hand.push(STATE.deck.pop());
-                dealer.hand.sort((a,b)=>(a.val-b.val)||(CONFIG.SUITS.indexOf(a.suit)-CONFIG.SUITS.indexOf(b.suit)));
-            }
-
+            if(STATE.deck.length > 0) { let dealer = STATE.players[STATE.currTurn]; dealer.hand.push(STATE.deck.pop()); dealer.hand.sort((a,b)=>(a.val-b.val)||(CONFIG.SUITS.indexOf(a.suit)-CONFIG.SUITS.indexOf(b.suit))); }
             this.syncState('RESET_ROUND'); UI.showBubble(STATE.currTurn, "发牌了"); this.processTurn();
         },
         processTurn: function() {
@@ -585,14 +550,12 @@
             if(NET.mode==='client') { NET.sendToHost({type:'ACTION',action:'pass'}); document.getElementById('player-controls').classList.remove('active'); }
             else this.turnEnd('pass');
         },
-        nextRound: function() {
-            this.resetRound();
-        },
+        nextRound: function() { this.resetRound(); },
         turnEnd: function(action, cards) {
             let pIdx = STATE.currTurn, player = STATE.players[pIdx];
             if(action === 'play') {
                 let analysis = RULES.analyze(cards);
-                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards; // === 修复：数据绑定 ===
+                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards;
                 STATE.passCount=0;
                 if(analysis.type.includes('bomb')||analysis.type==='rocket') STATE.bombCount++;
                 let snd = (analysis.type.includes('bomb')||analysis.type==='rocket') ? 'bomb' : 'play';
@@ -626,13 +589,7 @@
                     p.hand.forEach(c=>cnt[c.val]=(cnt[c.val]||0)+1); for(let v in cnt)if(cnt[v]>=3)hBombs++;
                     if(bad>0) AUDIO.play('suffocated');
                     let tMult = mult * Math.pow(2,bad) * Math.pow(2,hBombs);
-                    
-                    // === NEW: Remaining Cards Penalty ===
-                    if (p.hand.length >= 5) {
-                        tMult *= 2;
-                        badges += " 🔒";
-                    }
-
+                    if (p.hand.length >= 5) { tMult *= 2; badges += " 🔒"; }
                     if(tMult>1) dMult=`x${tMult}`; if(hBombs>0) badges+=" 💣";
                     cost = p.hand.length * tMult; p.chips-=cost; pot+=cost;
                 }
@@ -662,17 +619,9 @@
             if(NET.mode==='client') {
                 if(data.type==='GAME_START') { 
                     STATE.players=data.players; STATE.playerCount=data.playerCount;
-                    // === Rejoin Fix: Find my peer ID in players list ===
-                    // Note: NET.peer.id might be new, but if I rejoined, Host updated it in STATE.players
                     let myP = STATE.players.find(p => p.peerId === NET.peer.id);
-                    // If my peer ID is not found (shouldn't happen on normal join, but rebind might need check)
-                    // If Host sent updated list, my ID should be there.
                     this.myPlayerIdx=myP?myP.id:-1;
-                    
-                    // Update PIN locally for client UI
-                    if(NET.hostConn && NET.hostConn.peer) {
-                        NET.myPin = NET.hostConn.peer.replace(CONFIG.APP_PREFIX, '');
-                    }
+                    if(NET.hostConn&&NET.hostConn.peer) NET.myPin = NET.hostConn.peer.replace(CONFIG.APP_PREFIX, '');
                     this.start(); 
                 }
                 else if(data.type==='STATE') {
