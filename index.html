@@ -187,7 +187,7 @@
                 <button class="main-btn secondary" onclick="UI.showLobby('join')">加入房间</button>
             </div>
             <button id="cassette-btn" onclick="AUDIO.Recorder.openUI()">🎙️ 磁带录音室</button>
-            <div style="font-size: 12px; color: #8d6e63; margin-top: 10px; opacity: 0.8;">Powered by PeerJS</div>
+            <div style="font-size: 12px; color: #8d6e63; margin-top: 10px; opacity: 0.8;">Powered by Rex爸爸 & PeerJS</div>
         </div>
     </div>
 
@@ -264,19 +264,19 @@
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         QUOTES: { PASS: ["不要", "过", "要不起", "Pass"], WIN: ["赢了！", "还有谁？", "承让", "结束战斗"], START: ["发牌了", "看牌", "各凭本事"] },
         
-        // === Mobile WebRTC Expert: Connectivity Optimization ===
+        // === Communication Expert: Global Relay & WeChat Fix ===
         PEER_CONFIG: { 
-            host: '0.peerjs.com', 
+            host: 'peerjs.com', 
             port: 443, 
             secure: true, 
-            pingInterval: 3000, // Faster pings for WeChat stability
-            debug: 1, // Enable console logs for debugging
+            pingInterval: 5000, 
+            debug: 1, 
             config: { 
                 iceServers: [ 
-                    { urls: 'stun:stun.qq.com:3478' }, // Tencent STUN
-                    { urls: 'stun:stun.l.google.com:19302' }, // Google Global STUN
-                    { urls: 'stun:stun.commgate.it:3478' }, // European STUN
-                    { urls: 'stun:stun.t-online.de:3478' } // European Alternate STUN
+                    { urls: "stun:openrelay.metered.ca:80" },
+                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
                 ] 
             } 
         },
@@ -294,7 +294,6 @@
             if(this.peer) this.peer.destroy(); 
             this.peer = new Peer(CONFIG.APP_PREFIX + this.myPin, CONFIG.PEER_CONFIG);
             
-            // --- Timeout Protection ---
             let opened = false;
             let retryTimer = setTimeout(() => {
                 if (!opened) {
@@ -305,9 +304,7 @@
             }, 10000);
 
             this.peer.on('open', () => { 
-                opened = true;
-                clearTimeout(retryTimer);
-                cb(this.myPin); 
+                opened = true; clearTimeout(retryTimer); cb(this.myPin); 
             });
 
             this.peer.on('connection', (conn) => {
@@ -316,17 +313,32 @@
                     if(data.type === 'JOIN') { 
                         let existingClient = this.clients.find(c => c.name === data.name);
                         let existingPlayerState = STATE.players.find(p => p.name === data.name);
+                        
                         if (existingClient || (STATE.players.length > 0 && existingPlayerState)) {
+                            console.log(`[Host] Reconnect: ${data.name}`);
                             if (existingClient) { existingClient.conn = conn; existingClient.id = conn.peer; }
                             else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); }
-                            if (existingPlayerState) { existingPlayerState.peerId = conn.peer; existingPlayerState.disconnected = false; existingPlayerState.isCpu = false; }
+                            
+                            if (existingPlayerState) { 
+                                existingPlayerState.peerId = conn.peer; 
+                                existingPlayerState.disconnected = false; 
+                                existingPlayerState.isCpu = false; 
+                            }
+                            
+                            // CPR: Send ID then Send State
                             conn.send({ type: 'GAME_START', players: STATE.players, playerCount: STATE.playerCount });
                             conn.send({ type: 'STATE', state: STATE, reason: 'RECONNECT' });
+                            
                             APP.syncState('RECONNECT');
                             UI.updateLobbyList();
                         } else {
-                            if (STATE.players.length > 0) { conn.send({ type: 'ERROR', msg: 'Game running' }); setTimeout(() => conn.close(), 500); }
-                            else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); UI.updateLobbyList(); }
+                            if (STATE.players.length > 0) { 
+                                conn.send({ type: 'ERROR', msg: 'Game running' }); 
+                                setTimeout(() => conn.close(), 500); 
+                            } else { 
+                                this.clients.push({ conn: conn, id: conn.peer, name: data.name }); 
+                                UI.updateLobbyList(); 
+                            }
                         }
                     }
                     else APP.onNetworkData(data, conn);
@@ -345,7 +357,6 @@
             this.mode = 'client'; if(this.peer) this.peer.destroy(); 
             this.peer = new Peer(CONFIG.PEER_CONFIG);
 
-            // --- Timeout Protection ---
             let opened = false;
             let retryTimer = setTimeout(() => {
                 if (!opened) {
@@ -356,8 +367,7 @@
             }, 10000);
 
             this.peer.on('open', () => {
-                opened = true;
-                clearTimeout(retryTimer);
+                opened = true; clearTimeout(retryTimer);
                 this.hostConn = this.peer.connect(CONFIG.APP_PREFIX + pin, { reliable: true });
                 this.hostConn.on('open', () => { this.hostConn.send({ type: 'JOIN', name: name }); cbSuccess(); });
                 this.hostConn.on('data', (data) => APP.onNetworkData(data));
@@ -604,7 +614,7 @@
             let pIdx = STATE.currTurn, player = STATE.players[pIdx];
             if(action === 'play') {
                 let analysis = RULES.analyze(cards);
-                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards; 
+                STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards;
                 STATE.passCount=0;
                 if(analysis.type.includes('bomb')||analysis.type==='rocket') STATE.bombCount++;
                 let snd = (analysis.type.includes('bomb')||analysis.type==='rocket') ? 'bomb' : 'play';
