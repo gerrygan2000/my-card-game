@@ -270,9 +270,11 @@
             pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    // [Modification] 核心修改：注入小米和腾讯的国内 STUN 服务器
+                    // [Fix] 混合穿透策略：腾讯/小米优先(国内秒开)，Google兜底(解决极端NAT)
+                    { urls: "stun:stun.qq.com:3478" },
                     { urls: "stun:stun.miwifi.com:3478" },
-                    { urls: "stun:stun.qq.com:3478" }
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" }
                 ],
                 // 3. 强制请求兼容模式
                 sdpSemantics: 'unified-plan' 
