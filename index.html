@@ -267,7 +267,11 @@
             host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    { urls: "stun:openrelay.metered.ca:80" },
+                    // [Fix] 替换为国内高可用的 STUN 节点 (腾讯 & 小米)
+                    { urls: "stun:stun.qq.com:3478" },
+                    { urls: "stun:stun.miwifi.com:3478" },
+                    
+                    // [Backup] 保留海外 TURN 作为兜底 (虽然也不稳，但聊胜于无)
                     { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
                     { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
                     { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
