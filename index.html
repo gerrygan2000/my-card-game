@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>上海干瞪眼 (Final Kill Edition)</title>
-    <script src="https://cdn.staticfile.net/peerjs/1.5.2/peerjs.min.js"></script>
-    <script src="https://cdn.staticfile.net/vConsole/3.15.1/vconsole.min.js"></script>
+    <!-- [Fix] 切换 CDN 源至 BootCDN 以解决 DNS 解析问题 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vConsole/3.15.1/vconsole.min.js"></script>
     <script>
         var vConsole = new VConsole({
             onReady: function() {
