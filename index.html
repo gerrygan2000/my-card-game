@@ -28,16 +28,6 @@
             color: #e0e0e0; background-color: var(--bg-deep-wood);
         }
 
-        /* 【新增】强制横屏遮罩样式 */
-        #landscape-lock {
-            display: none; position: fixed; inset: 0; background: #000; z-index: 100000;
-            flex-direction: column; justify-content: center; align-items: center;
-            color: var(--vintage-gold); text-align: center;
-        }
-        @media screen and (orientation: portrait) {
-            #landscape-lock { display: flex; }
-        }
-
         #game-table-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-image: url('https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=2069');
@@ -147,11 +137,6 @@
     </style>
 </head>
 <body>
-
-    <div id="landscape-lock">
-        <div style="font-size: 60px; margin-bottom: 20px;">📱⟳</div>
-        <div style="font-size: 20px; font-weight: bold;">为了最佳体验<br>请将手机横屏</div>
-    </div>
 
     <div id="game-table-bg"></div>
 
