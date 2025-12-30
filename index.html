@@ -267,15 +267,16 @@
             host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    // [Fix] 替换为国内高可用的 STUN 节点 (腾讯 & 小米)
+                    // 1. 国内 STUN (用于尝试直连)
                     { urls: "stun:stun.qq.com:3478" },
-                    { urls: "stun:stun.miwifi.com:3478" },
                     
-                    // [Backup] 保留海外 TURN 作为兜底 (虽然也不稳，但聊胜于无)
-                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
-                ] 
+                    // 2. 关键修改：强制使用 TCP 协议的 TURN 服务器 (用于穿透电信/移动防火墙)
+                    // 注意：这里显式添加了 ?transport=tcp 参数
+                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:80?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                ],
+                // 3. 强制请求兼容模式
+                sdpSemantics: 'unified-plan' 
             } 
         },
         APP_PREFIX: 'gandengyan-fin-'
