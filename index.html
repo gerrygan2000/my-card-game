@@ -313,10 +313,12 @@
                 conn.on('open', () => { conn.send({type:'WELCOME'}); });
                 conn.on('data', (data) => {
                     if(data.type === 'JOIN') { 
+                        // Advanced Reconnection Logic
                         let existingClient = this.clients.find(c => c.name === data.name);
                         let existingPlayerState = STATE.players.find(p => p.name === data.name);
 
                         if (existingClient || (STATE.players.length > 0 && existingPlayerState)) {
+                            console.log(`[Host] Rejoin detected for ${data.name}.`);
                             if (existingClient) { existingClient.conn = conn; existingClient.id = conn.peer; }
                             else { this.clients.push({ conn: conn, id: conn.peer, name: data.name }); }
                             
@@ -326,6 +328,7 @@
                                 existingPlayerState.isCpu = false; 
                             }
                             
+                            // CPR injection: ID then State
                             conn.send({ type: 'GAME_START', players: STATE.players, playerCount: STATE.playerCount });
                             conn.send({ type: 'STATE', state: STATE, reason: 'RECONNECT' });
                             
@@ -354,6 +357,7 @@
             this.peer.on('error', (err) => { 
                 if(err.type === 'unavailable-id') setTimeout(() => this.initHost(cb), 500); 
                 if(err.type === 'server-error') {
+                    console.log("[WebRTC] Server error detected, attempting reconnect in 3s...");
                     setTimeout(() => this.peer.reconnect(), 3000);
                 }
             });
@@ -366,6 +370,7 @@
             let opened = false;
             let idTimeout = setTimeout(() => {
                 if (!opened) {
+                    console.log("[WebRTC] Client init stalled, forcing reconnect...");
                     this.peer.reconnect();
                 }
             }, 5000);
@@ -374,6 +379,7 @@
                 opened = true; clearTimeout(idTimeout);
                 this.hostConn = this.peer.connect(CONFIG.APP_PREFIX + pin, { reliable: true });
                 this.hostConn.on('open', () => { 
+                    console.log('连接成功，正在初始化数据...');
                     this.hostConn.send({ type: 'JOIN', name: name }); 
                     cbSuccess(); 
                 });
@@ -560,7 +566,11 @@
         startLocal: function() { NET.mode = 'offline'; this.myPlayerIdx = 0; this.launchGame(STATE.playerCount); },
         startHosting: function() { NET.initHost((pin) => document.getElementById('my-pin').innerText = pin); },
         joinGame: function() {
-            let pin = document.getElementById('join-pin').value; if(pin.length!==4) return;
+            let pin = document.getElementById('join-pin').value; 
+            if(pin.length!==4) {
+                document.getElementById('join-status').innerText = "请输入4位PIN码";
+                return;
+            }
             let name = document.getElementById('nickname-input').value || "Player";
             document.getElementById('join-status').innerText = "连接中...";
             NET.joinRoom(pin, name, () => { document.getElementById('join-status').innerText = "已连接! 等待房主..."; document.getElementById('net-indicator').style.display='block'; }, () => document.getElementById('join-status').innerText = "失败");
