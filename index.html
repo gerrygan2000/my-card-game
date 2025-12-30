@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>上海干瞪眼 (Final Kill Edition)</title>
-    <!-- 引入 PeerJS -->
     <script src="https://cdn.staticfile.net/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         /* ==================== 1. THEME & VARIABLES ==================== */
@@ -27,6 +26,16 @@
             margin: 0; overflow: hidden; height: 100vh; width: 100vw;
             user-select: none; -webkit-user-select: none; touch-action: manipulation;
             color: #e0e0e0; background-color: var(--bg-deep-wood);
+        }
+
+        /* 【新增】强制横屏遮罩样式 */
+        #landscape-lock {
+            display: none; position: fixed; inset: 0; background: #000; z-index: 100000;
+            flex-direction: column; justify-content: center; align-items: center;
+            color: var(--vintage-gold); text-align: center;
+        }
+        @media screen and (orientation: portrait) {
+            #landscape-lock { display: flex; }
         }
 
         #game-table-bg {
@@ -139,6 +148,11 @@
 </head>
 <body>
 
+    <div id="landscape-lock">
+        <div style="font-size: 60px; margin-bottom: 20px;">📱⟳</div>
+        <div style="font-size: 20px; font-weight: bold;">为了最佳体验<br>请将手机横屏</div>
+    </div>
+
     <div id="game-table-bg"></div>
 
     <div id="start-screen" class="scene active">
@@ -148,7 +162,6 @@
                 <label style="color:#aaa; font-size:14px;">你的昵称</label>
                 <input type="text" id="nickname-input" class="styled-input" placeholder="请输入你的大名" maxlength="8" required>
             </div>
-            <!-- 修复单机按钮 -->
             <button class="main-btn" id="start-ai-btn" onclick="UI.showCountPicker()">单机练习</button>
             <div style="margin: 10px 0; border-top: 1px solid #555; padding-top: 15px;">
                 <div style="font-size:14px; color:#aaa; margin-bottom:10px;">网络对战</div>
@@ -160,7 +173,6 @@
         </div>
     </div>
 
-    <!-- 单机人数选择面板 -->
     <div id="count-picker" class="scene" style="background: rgba(0,0,0,0.85); z-index: 600;">
         <div class="menu-panel">
             <div style="font-size: 22px; color: #fff; margin-bottom: 10px;">请选择对战人数</div>
@@ -560,7 +572,9 @@
             STATE.players.forEach((p,i)=>{
                 let isWin=(i===wIdx), cost=0;
                 if(!isWin) { 
-                    cost=p.hand.length*mult; p.chips-=cost; pot+=cost; 
+                    // [Update] 剩余5或6张牌时，倍率翻倍
+                    let finalMult = mult * ([5, 6].includes(p.hand.length) ? 2 : 1);
+                    cost=p.hand.length*finalMult; p.chips-=cost; pot+=cost; 
                     UI.showBubble(i, CONFIG.SHANGHAI_WORDS.lose[Math.floor(Math.random()*2)]);
                 } else {
                     UI.showBubble(i, CONFIG.SHANGHAI_WORDS.win[Math.floor(Math.random()*3)]);
