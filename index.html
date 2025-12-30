@@ -265,17 +265,13 @@
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         PEER_CONFIG: { 
             host: '0.peerjs.com', port: 443, secure: true, 
-            debug: 3, // [Debug] 开启最高级别日志，捕捉所有握手细节
+            debug: 2, // [Mod] 降级调试日志，专注关键握手信息
             pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    // 1. 国内 STUN (用于尝试直连)
-                    { urls: "stun:stun.qq.com:3478" },
-                    
-                    // 2. 关键修改：强制使用 TCP 协议的 TURN 服务器 (用于穿透电信/移动防火墙)
-                    // 注意：这里显式添加了 ?transport=tcp 参数
-                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:80?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                    // [Modification] 核心修改：注入小米和腾讯的国内 STUN 服务器
+                    { urls: "stun:stun.miwifi.com:3478" },
+                    { urls: "stun:stun.qq.com:3478" }
                 ],
                 // 3. 强制请求兼容模式
                 sdpSemantics: 'unified-plan' 
