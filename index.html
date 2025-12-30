@@ -264,7 +264,9 @@
         },
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         PEER_CONFIG: { 
-            host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
+            host: '0.peerjs.com', port: 443, secure: true, 
+            debug: 3, // [Debug] 开启最高级别日志，捕捉所有握手细节
+            pingInterval: 5000,
             config: { 
                 iceServers: [ 
                     // 1. 国内 STUN (用于尝试直连)
