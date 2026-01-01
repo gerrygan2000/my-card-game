@@ -76,11 +76,12 @@
         #marquee-content { white-space: nowrap; color: var(--neon-cyan); font-size: 14px; font-family: monospace; animation: marqueeScroll 25s linear infinite; }
         @keyframes marqueeScroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
+        /* 【UI调整 3】：“轮到你了”缩小并下移至中间位置 */
         #turn-notification {
-            position: absolute; top: 22%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 32px; font-weight: bold; color: #fff;
+            position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 22px; font-weight: bold; color: #fff;
             text-shadow: 0 0 10px #000, 0 0 20px var(--vintage-gold);
-            background: rgba(0,0,0,0.7); padding: 12px 35px; border-radius: 8px;
+            background: rgba(0,0,0,0.7); padding: 8px 25px; border-radius: 8px;
             border: 2px solid var(--vintage-gold); pointer-events: none; opacity: 0; z-index: 300;
             transition: opacity 0.3s; white-space: nowrap;
         }
@@ -112,12 +113,18 @@
         .action-bubble.show { opacity: 1; top: -50px; }
 
         .played-cards-slot { position: absolute; width: 100px; height: 90px; display: flex; justify-content: center; align-items: center; z-index: 20; }
-        .slot-bottom { bottom: 20px; left: 20px; } .slot-bottom .played-cards-slot { bottom: 120px; left: 50%; transform: translateX(-50%); }
+        
+        /* 【UI调整 4】：自身头像上移，避开手牌 */
+        .slot-bottom { bottom: 160px; left: 20px; } 
+        .slot-bottom .played-cards-slot { bottom: 120px; left: 50%; transform: translateX(-50%); }
+        
         .slot-right { top: 45%; right: 15px; transform: translateY(-50%); } .slot-right .played-cards-slot { right: 90px; top: 50%; transform: translateY(-50%); }
         .slot-left { top: 45%; left: 15px; transform: translateY(-50%); } .slot-left .played-cards-slot { left: 90px; top: 50%; transform: translateY(-50%); }
-        .slot-top { top: 15px; left: 50%; transform: translateX(-50%); } .slot-top .played-cards-slot { top: 80px; left: 50%; transform: translateX(-50%); }
-        .slot-top-left { top: 15px; left: 20%; } .slot-top-left .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
-        .slot-top-right { top: 15px; right: 20%; } .slot-top-right .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
+        
+        /* 【UI调整 2】：顶部玩家下移，避免气泡溢出屏幕 */
+        .slot-top { top: 55px; left: 50%; transform: translateX(-50%); } .slot-top .played-cards-slot { top: 80px; left: 50%; transform: translateX(-50%); }
+        .slot-top-left { top: 55px; left: 20%; } .slot-top-left .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
+        .slot-top-right { top: 55px; right: 20%; } .slot-top-right .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
 
         /* 【强制图层置底】 */
         #center-table { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 160px; z-index: -1; background: radial-gradient(#1e8449, #145a32); border: 8px solid #2e1e19; border-radius: 80px; box-shadow: inset 0 0 20px #000; display: flex; justify-content: center; align-items: center; pointer-events: none; }
@@ -287,7 +294,8 @@
             if(my.type==='bomb') { if(table.type!=='bomb')return true; return my.count>table.count || (my.count===table.count && my.val>table.val); }
             if(table.type==='bomb')return false;
             if(my.type===table.type && my.count===table.count) {
-                if((my.type==='single'||my.type==='pair') && my.val===15) return true;
+                // 【修复】：增加 table.val!==15 判断，防止2打2
+                if((my.type==='single'||my.type==='pair') && my.val===15 && table.val!==15) return true;
                 return my.val===table.val+1;
             } return false;
         }
@@ -589,9 +597,10 @@
             UI.showTurnNotify(STATE.currTurn);
             if(NET.mode !== 'offline') {
                 let pin = NET.mode === 'host' ? NET.myPin : (STATE.roomPin || "...");
-                document.getElementById('top-room-info').innerText = `[${pin}] 包房 · 上海干瞪眼`;
+                // 【UI调整 1】：顶部文字去掉“· 上海干瞪眼”
+                document.getElementById('top-room-info').innerText = `[${pin}] 包房`;
             } else {
-                document.getElementById('top-room-info').innerText = `单机练习模式 · 上海干瞪眼`;
+                document.getElementById('top-room-info').innerText = `单机练习模式`;
             }
         },
         onNetworkData: function(data, senderConn) {
