@@ -4,24 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>上海干瞪眼 (Final Kill Edition)</title>
-    <!-- [Fix] 切换 CDN 源至 BootCDN 以解决 DNS 解析问题 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/vConsole/3.15.1/vconsole.min.js"></script>
-    <script>
-        var vConsole = new VConsole({
-            onReady: function() {
-                // [Fix] 强制将按钮移到屏幕正中间
-                var btn = document.querySelector('.vc-switch');
-                if(btn) {
-                    btn.style.top = '50%';
-                    btn.style.left = '50%';
-                    btn.style.transform = 'translate(-50%, -50%)';
-                    btn.style.right = 'auto';
-                    btn.style.bottom = 'auto';
-                }
-            }
-        });
-    </script>
+    <!-- 引入 PeerJS -->
+    <script src="https://cdn.staticfile.net/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         /* ==================== 1. THEME & VARIABLES ==================== */
         :root {
@@ -164,6 +148,7 @@
                 <label style="color:#aaa; font-size:14px;">你的昵称</label>
                 <input type="text" id="nickname-input" class="styled-input" placeholder="请输入你的大名" maxlength="8" required>
             </div>
+            <!-- 修复单机按钮 -->
             <button class="main-btn" id="start-ai-btn" onclick="UI.showCountPicker()">单机练习</button>
             <div style="margin: 10px 0; border-top: 1px solid #555; padding-top: 15px;">
                 <div style="font-size:14px; color:#aaa; margin-bottom:10px;">网络对战</div>
@@ -175,6 +160,7 @@
         </div>
     </div>
 
+    <!-- 单机人数选择面板 -->
     <div id="count-picker" class="scene" style="background: rgba(0,0,0,0.85); z-index: 600;">
         <div class="menu-panel">
             <div style="font-size: 22px; color: #fff; margin-bottom: 10px;">请选择对战人数</div>
@@ -265,19 +251,14 @@
         },
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
         PEER_CONFIG: { 
-            host: '0.peerjs.com', port: 443, secure: true, 
-            debug: 2, // [Mod] 降级调试日志，专注关键握手信息
-            pingInterval: 5000,
+            host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    // [Fix] 混合穿透策略：腾讯/小米优先(国内秒开)，Google兜底(解决极端NAT)
-                    { urls: "stun:stun.qq.com:3478" },
-                    { urls: "stun:stun.miwifi.com:3478" },
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" }
-                ],
-                // 3. 强制请求兼容模式
-                sdpSemantics: 'unified-plan' 
+                    { urls: "stun:openrelay.metered.ca:80" },
+                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                ] 
             } 
         },
         APP_PREFIX: 'gandengyan-fin-'
@@ -579,9 +560,7 @@
             STATE.players.forEach((p,i)=>{
                 let isWin=(i===wIdx), cost=0;
                 if(!isWin) { 
-                    // [Update] 剩余5或6张牌时，倍率翻倍
-                    let finalMult = mult * ([5, 6].includes(p.hand.length) ? 2 : 1);
-                    cost=p.hand.length*finalMult; p.chips-=cost; pot+=cost; 
+                    cost=p.hand.length*mult; p.chips-=cost; pot+=cost; 
                     UI.showBubble(i, CONFIG.SHANGHAI_WORDS.lose[Math.floor(Math.random()*2)]);
                 } else {
                     UI.showBubble(i, CONFIG.SHANGHAI_WORDS.win[Math.floor(Math.random()*3)]);
