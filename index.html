@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>上海干瞪眼 (Final Kill Edition)</title>
-    <!-- 引入 PeerJS -->
     <script src="https://cdn.staticfile.net/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         /* ==================== 1. THEME & VARIABLES ==================== */
@@ -76,7 +75,6 @@
         #marquee-content { white-space: nowrap; color: var(--neon-cyan); font-size: 14px; font-family: monospace; animation: marqueeScroll 25s linear infinite; }
         @keyframes marqueeScroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
-        /* 【UI调整 3】：“轮到你了”缩小并下移至中间位置 */
         #turn-notification {
             position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
             font-size: 22px; font-weight: bold; color: #fff;
@@ -96,7 +94,6 @@
         
         .my-card { margin-left: -20px; cursor: pointer; transition: transform 0.2s, z-index 0.2s; box-shadow: -2px 0 6px rgba(0,0,0,0.3); transform-origin: bottom center; }
         .my-card:first-child { margin-left: 0; }
-        /* 【强制逻辑】：未选牌在前(高z)，点亮牌在后(低z) */
         .my-card.selected { transform: translateY(-25px); border: 2px solid var(--vintage-gold); box-shadow: 0 0 15px var(--vintage-gold); background: #fff; z-index: 1 !important; }
         .desk-card { position: absolute; box-shadow: 1px 1px 5px rgba(0,0,0,0.4); }
         .flying-card { position: fixed; z-index: 9999; pointer-events: none; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
@@ -114,19 +111,16 @@
 
         .played-cards-slot { position: absolute; width: 100px; height: 90px; display: flex; justify-content: center; align-items: center; z-index: 20; }
         
-        /* 【UI调整 4】：自身头像上移，避开手牌 */
         .slot-bottom { bottom: 160px; left: 20px; } 
         .slot-bottom .played-cards-slot { bottom: 120px; left: 50%; transform: translateX(-50%); }
         
         .slot-right { top: 45%; right: 15px; transform: translateY(-50%); } .slot-right .played-cards-slot { right: 90px; top: 50%; transform: translateY(-50%); }
         .slot-left { top: 45%; left: 15px; transform: translateY(-50%); } .slot-left .played-cards-slot { left: 90px; top: 50%; transform: translateY(-50%); }
         
-        /* 【UI调整 2】：顶部玩家下移，避免气泡溢出屏幕 */
         .slot-top { top: 55px; left: 50%; transform: translateX(-50%); } .slot-top .played-cards-slot { top: 80px; left: 50%; transform: translateX(-50%); }
         .slot-top-left { top: 55px; left: 20%; } .slot-top-left .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
         .slot-top-right { top: 55px; right: 20%; } .slot-top-right .played-cards-slot { top: 70px; left: 50%; transform: translateX(-50%); }
 
-        /* 【强制图层置底】 */
         #center-table { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 160px; z-index: -1; background: radial-gradient(#1e8449, #145a32); border: 8px solid #2e1e19; border-radius: 80px; box-shadow: inset 0 0 20px #000; display: flex; justify-content: center; align-items: center; pointer-events: none; }
         #deck-pile { width: var(--card-width); height: var(--card-height); border-radius: var(--card-radius); background: repeating-linear-gradient(45deg, #283593 0px, #283593 5px, #fff 5px, #fff 6px); border: 3px solid #fff; display: flex; justify-content: center; align-items: center; box-shadow: -3px 3px 6px rgba(0,0,0,0.6); }
         #my-hand { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; height: 110px; width: auto; max-width: 90%; z-index: 100; }
@@ -155,7 +149,6 @@
                 <label style="color:#aaa; font-size:14px;">你的昵称</label>
                 <input type="text" id="nickname-input" class="styled-input" placeholder="请输入你的大名" maxlength="8" required>
             </div>
-            <!-- 修复单机按钮 -->
             <button class="main-btn" id="start-ai-btn" onclick="UI.showCountPicker()">单机练习</button>
             <div style="margin: 10px 0; border-top: 1px solid #555; padding-top: 15px;">
                 <div style="font-size:14px; color:#aaa; margin-bottom:10px;">网络对战</div>
@@ -167,7 +160,6 @@
         </div>
     </div>
 
-    <!-- 单机人数选择面板 -->
     <div id="count-picker" class="scene" style="background: rgba(0,0,0,0.85); z-index: 600;">
         <div class="menu-panel">
             <div style="font-size: 22px; color: #fff; margin-bottom: 10px;">请选择对战人数</div>
@@ -261,10 +253,10 @@
             host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    { urls: "stun:openrelay.metered.ca:80" },
-                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
-                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
+                    { urls: "stun:stun.qq.com:3478" },
+                    { urls: "stun:stun.miwifi.com:3478" },
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
                 ] 
             } 
         },
@@ -294,7 +286,6 @@
             if(my.type==='bomb') { if(table.type!=='bomb')return true; return my.count>table.count || (my.count===table.count && my.val>table.val); }
             if(table.type==='bomb')return false;
             if(my.type===table.type && my.count===table.count) {
-                // 【修复】：增加 table.val!==15 判断，防止2打2
                 if((my.type==='single'||my.type==='pair') && my.val===15 && table.val!==15) return true;
                 return my.val===table.val+1;
             } return false;
@@ -340,7 +331,6 @@
         },
         renderLayout: function() {
             let container = document.getElementById('players-container'); 
-            // 只有在布局不存在时才重绘框架，防止吞掉桌面上的牌
             if(!container.querySelector('.player-slot')) {
                 container.innerHTML = '';
                 let config = CONFIG.LAYOUTS[STATE.playerCount], myIdx = APP.myPlayerIdx;
@@ -349,7 +339,6 @@
                     container.innerHTML += `<div class="player-slot ${posClass}" id="p-slot-${i}"><div class="action-bubble" id="bubble-${i}"></div><div class="avatar-wrapper"><div class="card-count-badge" id="badge-count-${i}">${p.hand.length}</div><div class="avatar" id="avatar-${i}">${i===myIdx?'我':(p.isCpu?'🤖':'👤')}</div></div><div class="player-name-tag">${p.name}</div><div class="played-cards-slot" id="played-cards-${i}"></div></div>`;
                 });
             }
-            // 根据STATE恢复所有玩家的出牌显示
             STATE.players.forEach((p, i) => this.renderPlayedCards(i, p.lastCards || []));
             if(!document.getElementById('my-hand')) {
                 let hand = document.createElement('div'); hand.id = 'my-hand';
@@ -370,14 +359,11 @@
                 container.appendChild(el);
             });
         },
-        // 【手术成功】：此函数现在仅更新局部出牌位，严禁全局重置！
         renderPlayedCards: function(pIdx, cards) {
             let slot = document.getElementById(`played-cards-${pIdx}`); 
             if(!slot) return;
-            // 如果 cards 为空，说明该玩家在这一轮还没出牌或者刚被清理。不要干扰其他玩家的 DOM。
             if(cards.length === 0) { slot.innerHTML = ''; return; }
-            
-            slot.innerHTML = ''; // 仅清空当前出牌人的槽位
+            slot.innerHTML = ''; 
             cards.forEach((c, i) => {
                 let el = document.createElement('div'); el.className = `card ${c.color} desk-card`;
                 let r=c.rank, s=c.suit; if(c.isJoker) r='JOKER';
@@ -389,7 +375,8 @@
         showTurnNotify: function(pIdx) {
             if(!STATE.players[pIdx]) return;
             let el = document.getElementById('turn-notification'); 
-            el.innerText = (pIdx === APP.myPlayerIdx || (NET.mode === 'client' && STATE.players[pIdx].peerId === NET.peer.id)) ? "轮到你了" : `轮到 ${STATE.players[pIdx].name} 了`;
+            var isMe = (NET.mode === 'offline' && pIdx === APP.myPlayerIdx) || (NET.peer && STATE.players[pIdx].peerId === NET.peer.id);
+            el.innerText = isMe ? "轮到你了" : `轮到 ${STATE.players[pIdx].name} 了`;
             el.classList.add('show'); 
             document.querySelectorAll('.player-slot').forEach(e => e.classList.remove('active-turn')); 
             let active = document.getElementById(`p-slot-${pIdx}`); if(active) active.classList.add('active-turn');
@@ -413,7 +400,6 @@
             let cards=document.querySelectorAll('.played-cards-slot .desk-card'); if(!cards.length){if(cb)cb();return;}
             let cx=window.innerWidth/2, cy=window.innerHeight/2;
             cards.forEach(c=>{ let r=c.getBoundingClientRect(); c.style.position='fixed'; c.style.left=r.left+'px'; c.style.top=r.top+'px'; c.style.transition='all 0.6s ease-in'; requestAnimationFrame(()=>{c.style.left=cx+'px'; c.style.top=cy+'px'; c.style.opacity=0;}); });
-            // 【清理指令唯一化】：在此处清空 STATE 数据
             STATE.players.forEach(p => p.lastCards = []);
             setTimeout(()=>{document.querySelectorAll('.played-cards-slot').forEach(e=>e.innerHTML='');if(cb)cb();},650);
         }
@@ -479,7 +465,6 @@
         },
         processTurn: function() {
             UI.updateInfo(); let player = STATE.players[STATE.currTurn];
-            // 【清理指令唯一化】：只有全员跳过且有人赢下这一轮摸牌时清理
             if(STATE.passCount >= STATE.playerCount - 1 && STATE.lastPlay) {
                 UI.showBubble(STATE.currTurn, "老乱！清场再来");
                 UI.animSweep(()=>{ 
@@ -497,9 +482,14 @@
                 document.getElementById('player-controls').classList.remove('active'); 
                 setTimeout(()=>AI.move(player), 1500); 
             }
-            else if(player.id === this.myPlayerIdx || (NET.mode === 'client' && player.peerId === NET.peer.id)) { 
-                document.getElementById('player-controls').classList.add('active'); 
-                this.checkHumanButtons(); 
+            else {
+                var isMyTurn = (NET.mode === 'offline' && player.id === this.myPlayerIdx) || (NET.peer && player.peerId === NET.peer.id);
+                if (isMyTurn) {
+                    document.getElementById('player-controls').classList.add('active'); 
+                    this.checkHumanButtons(); 
+                } else {
+                    document.getElementById('player-controls').classList.remove('active');
+                }
             }
         },
         humanPlay: function() {
@@ -522,7 +512,6 @@
             if(action === 'play') {
                 let analysis = RULES.analyze(cards);
                 STATE.lastPlay=analysis; STATE.lastPlay.ownerIdx=pIdx; STATE.lastPlay.cards=cards;
-                // 数据更新：记录该玩家的出牌，以便同步
                 player.lastCards = cards;
                 STATE.passCount=0; if(analysis.type.includes('bomb')||analysis.type==='rocket') STATE.bombCount++;
                 AUDIO.play((analysis.type.includes('bomb')||analysis.type==='rocket') ? 'bomb' : 'play');
@@ -597,7 +586,6 @@
             UI.showTurnNotify(STATE.currTurn);
             if(NET.mode !== 'offline') {
                 let pin = NET.mode === 'host' ? NET.myPin : (STATE.roomPin || "...");
-                // 【UI调整 1】：顶部文字去掉“· 上海干瞪眼”
                 document.getElementById('top-room-info').innerText = `[${pin}] 包房`;
             } else {
                 document.getElementById('top-room-info').innerText = `单机练习模式`;
@@ -616,7 +604,9 @@
                         document.getElementById('settlement-modal').classList.remove('active');
                     }
                     UI.updateInfo(); UI.renderLayout(); UI.renderHand(); UI.showTurnNotify(STATE.currTurn);
-                    if(STATE.currTurn===this.myPlayerIdx) document.getElementById('player-controls').classList.add('active');
+                    var isMyActualTurn = (STATE.players[STATE.currTurn] && STATE.players[STATE.currTurn].peerId === NET.peer.id);
+                    if(isMyActualTurn) document.getElementById('player-controls').classList.add('active');
+                    else document.getElementById('player-controls').classList.remove('active');
                 }
             } else if(NET.mode==='host' && data.type==='ACTION') {
                 let client=NET.clients.find(c=>c.conn===senderConn), pIdx=STATE.players.findIndex(p=>p.peerId===client.id);
@@ -630,7 +620,7 @@
        5. NETWORK ENGINE & AUDIO ENGINE
        ========================================================================== */
     const NET = {
-        peer: null, mode: 'offline', hostConn: null, clients: [], myPin: null,
+        peer: null, mode: 'offline', hostConn: null, clients: [], myPin: null, lastBcast: 0,
         initHost: function(cb) {
             this.mode = 'host'; this.clients = []; this.myPin = Math.floor(1000 + Math.random() * 9000).toString();
             if(this.peer) this.peer.destroy(); 
@@ -666,7 +656,14 @@
             });
             this.peer.on('error', (err) => cbErr(err));
         },
-        broadcast: function(data) { if(this.mode === 'host') this.clients.forEach(c => { if(c.conn && c.conn.open) c.conn.send(data); }); },
+        broadcast: function(data) { 
+            if(this.mode !== 'host') return;
+            // 优化：对高频STATE同步增加100ms节流，除非是关键Reason
+            let now = Date.now();
+            if(data.type==='STATE' && !data.reason && now - this.lastBcast < 100) return;
+            this.lastBcast = now;
+            this.clients.forEach(c => { if(c.conn && c.conn.open) c.conn.send(data); }); 
+        },
         sendToHost: function(data) { if(this.mode === 'client' && this.hostConn && this.hostConn.open) this.hostConn.send(data); }
     };
 
