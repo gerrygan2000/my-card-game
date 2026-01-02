@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>上海干瞪眼 (Final Kill Edition)</title>
+    <!-- 引入 PeerJS -->
     <script src="https://cdn.staticfile.net/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         /* ==================== 1. THEME & VARIABLES ==================== */
@@ -154,6 +155,7 @@
                 <label style="color:#aaa; font-size:14px;">你的昵称</label>
                 <input type="text" id="nickname-input" class="styled-input" placeholder="请输入你的大名" maxlength="8" required>
             </div>
+            <!-- 修复单机按钮 -->
             <button class="main-btn" id="start-ai-btn" onclick="UI.showCountPicker()">单机练习</button>
             <div style="margin: 10px 0; border-top: 1px solid #555; padding-top: 15px;">
                 <div style="font-size:14px; color:#aaa; margin-bottom:10px;">网络对战</div>
@@ -165,6 +167,7 @@
         </div>
     </div>
 
+    <!-- 单机人数选择面板 -->
     <div id="count-picker" class="scene" style="background: rgba(0,0,0,0.85); z-index: 600;">
         <div class="menu-panel">
             <div style="font-size: 22px; color: #fff; margin-bottom: 10px;">请选择对战人数</div>
@@ -254,20 +257,14 @@
             lose: ["伐来赛，统统吃脱！", "册那！"]
         },
         LAYOUTS: { 3: ['slot-bottom', 'slot-right', 'slot-left'], 4: ['slot-bottom', 'slot-right', 'slot-top', 'slot-left'], 5: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top-left', 'slot-left'], 6: ['slot-bottom', 'slot-right', 'slot-top-right', 'slot-top', 'slot-top-left', 'slot-left'] },
-        /* ==================== 核心改造区域：接入香港私有服务器 ==================== */
         PEER_CONFIG: { 
-            host: '103.243.24.126', // 香港节点 IP
-            port: 9000,             // 服务端口
-            path: '/myapp',         // 服务路径
-            secure: false,          // 纯IP直连必须用http
-            key: 'peerjs',          // 与服务端 key 保持一致
-            debug: 2, 
-            pingInterval: 5000,
+            host: '0.peerjs.com', port: 443, secure: true, debug: 1, pingInterval: 5000,
             config: { 
                 iceServers: [ 
-                    // 针对香港节点优化的 Google STUN，速度最快
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
+                    { urls: "stun:openrelay.metered.ca:80" },
+                    { urls: "turn:openrelay.metered.ca:80", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" },
+                    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "e4b469df87f075fa140a04a8", credential: "V141Y4bT8Fgomte0" }
                 ] 
             } 
         },
